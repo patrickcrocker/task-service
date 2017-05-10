@@ -1,0 +1,351 @@
+---
+groups:
+- name: all
+  jobs:
+  - build
+  - test
+  - uat
+  - shipit
+  - patch
+  - prod
+  - major
+  - minor
+- name: develop
+  jobs:
+  - build
+  - test
+  - uat
+- name: publish
+  jobs:
+  - shipit
+  - patch
+  - prod
+  - major
+  - minor
+
+maven-params: &maven-params
+  MAVEN_OPTS: {{maven-opts}}
+  MAVEN_CONFIG: {{maven-config}}
+  MAVEN_REPO_MIRROR: {{maven-mirror-url}}
+  MAVEN_REPO_USERNAME: {{maven-mirror-username}}
+  MAVEN_REPO_PASSWORD: {{maven-mirror-password}}
+
+jobs:
+- name: build
+  public: true
+  serial_groups: [version]
+  plan:
+  - aggregate:
+    - get: pipeline-tasks
+    - get: project
+      resource: task-service
+      trigger: true
+    - get: version
+      params: {pre: rc}
+  - task: build
+    file: pipeline-tasks/build-maven-semver/task.yml
+    params:
+      <<: *maven-params
+  - put: maven-milestone
+    params:
+      file: task-output/task-service-*.jar
+      pom_file: project/pom.xml
+      version_file: version/version
+  - put: version
+    params: {file: version/version}
+
+- name: test
+  public: true
+  serial_groups: [version]
+  plan:
+  - aggregate:
+    - get: pipeline-tasks
+    - get: project
+      resource: task-service
+      passed: [build]
+    - get: version
+      passed: [build]
+    - get: artifact
+      resource: maven-milestone
+      passed: [build]
+      trigger: true
+  - put: cf-prepare-env
+    resource: cf-dev
+    params:
+      commands:
+      - command: create-org
+      - command: create-space
+      - command: create-service
+        service: {{cf-dev-app-db-service}}
+        plan: {{cf-dev-app-db-plan}}
+        service_instance: {{cf-dev-app-db-si}}
+      - command: create-service
+        service: {{cf-dev-app-rabbitmq-service}}
+        plan: {{cf-dev-app-rabbitmq-plan}}
+        service_instance: {{cf-dev-app-rabbitmq-si}}
+      - command: create-service
+        service: {{cf-dev-app-service-registry-service}}
+        plan: {{cf-dev-app-service-registry-plan}}
+        service_instance: {{cf-dev-app-service-registry-si}}
+  - task: generate-manifest
+    file: pipeline-tasks/generate-manifest/task.yml
+    params:
+      MF_NAME: {{cf-dev-app-name}}
+      MF_HOST: {{cf-dev-app-host}}
+      MF_DOMAIN: {{cf-dev-app-domain}}
+      MF_SERVICES: [{{cf-dev-app-db-si}}]
+      MF_BUILDPACK: https://github.com/cloudfoundry/java-buildpack.git#v4.0
+  - put: cf-push
+    resource: cf-dev
+    params:
+      command: zero-downtime-push
+      manifest: task-output/manifest.yml
+      path: artifact/task-service-*.jar
+      current_app_name: {{cf-dev-app-name}}
+  - task: integration-tests
+    file: pipeline-tasks/run-maven-itests/task.yml
+    params:
+      <<: *maven-params
+      APP_URL: {{cf-dev-app-url}}
+
+- name: uat
+  public: true
+  serial_groups: [version]
+  plan:
+  - aggregate:
+    - get: pipeline-tasks
+    - get: project
+      resource: task-service
+      passed: [test]
+    - get: version
+      passed: [test]
+    - get: artifact
+      resource: maven-milestone
+      passed: [test]
+      trigger: true
+  - put: cf-prepare-env
+    resource: cf-test
+    params:
+      commands:
+      - command: create-org
+      - command: create-space
+      - command: create-service
+        service: {{cf-test-app-db-service}}
+        plan: {{cf-test-app-db-plan}}
+        service_instance: {{cf-test-app-db-si}}
+      - command: create-service
+        service: {{cf-test-app-rabbitmq-service}}
+        plan: {{cf-test-app-rabbitmq-plan}}
+        service_instance: {{cf-test-app-rabbitmq-si}}
+      - command: create-service
+        service: {{cf-test-app-service-registry-service}}
+        plan: {{cf-test-app-service-registry-plan}}
+        service_instance: {{cf-test-app-service-registry-si}}
+  - task: generate-manifest
+    file: pipeline-tasks/generate-manifest/task.yml
+    params:
+      MF_NAME: {{cf-test-app-name}}
+      MF_HOST: {{cf-test-app-host}}
+      MF_SERVICES: [{{cf-test-app-db-si}}]
+      MF_DOMAIN: {{cf-test-app-domain}}
+      MF_BUILDPACK: https://github.com/cloudfoundry/java-buildpack.git#v4.0
+  - put: cf-push
+    resource: cf-test
+    params:
+      command: zero-downtime-push
+      manifest: task-output/manifest.yml
+      path: artifact/task-service-*.jar
+      current_app_name: {{cf-test-app-name}}
+  - task: integration-tests
+    file: pipeline-tasks/run-maven-itests/task.yml
+    params:
+      <<: *maven-params
+      APP_URL: {{cf-test-app-url}}
+
+- name: shipit
+  public: true
+  serial_groups: [version]
+  plan:
+  - aggregate:
+    - get: project
+      resource: task-service
+      passed: [uat]
+    - get: version
+      passed: [uat]
+      params: {bump: final}
+    - get: maven-milestone
+      passed: [uat]
+  - put: maven-release
+    params:
+      file: maven-milestone/task-service-*.jar
+      pom_file: project/pom.xml
+      version_file: version/version
+  - put: version
+    params: {file: version/version}
+
+- name: prod
+  public: true
+  serial_groups: [version]
+  plan:
+  - aggregate:
+    - get: pipeline-tasks
+    - get: project
+      resource: task-service
+      passed: [shipit]
+    - get: version
+      passed: [shipit]
+    - get: artifact
+      resource: maven-release
+      passed: [shipit]
+  - put: cf-prepare-env
+    resource: cf-prod
+    params:
+      commands:
+      - command: create-org
+      - command: create-space
+      - command: create-service
+        service: {{cf-prod-app-db-service}}
+        plan: {{cf-prod-app-db-plan}}
+        service_instance: {{cf-prod-app-db-si}}
+      - command: create-service
+        service: {{cf-prod-app-rabbitmq-service}}
+        plan: {{cf-prod-app-rabbitmq-plan}}
+        service_instance: {{cf-prod-app-rabbitmq-si}}
+      - command: create-service
+        service: {{cf-prod-app-service-registry-service}}
+        plan: {{cf-prod-app-service-registry-plan}}
+        service_instance: {{cf-prod-app-service-registry-si}}
+  - task: generate-manifest
+    file: pipeline-tasks/generate-manifest/task.yml
+    params:
+      MF_NAME: {{cf-prod-app-name}}
+      MF_HOST: {{cf-prod-app-host}}
+      MF_DOMAIN: {{cf-prod-app-domain}}
+      MF_SERVICES: [{{cf-prod-app-db-si}}]
+      MF_BUILDPACK: https://github.com/cloudfoundry/java-buildpack.git#v4.0
+  - put: cf-push
+    resource: cf-prod
+    params:
+      command: zero-downtime-push
+      manifest: task-output/manifest.yml
+      path: artifact/task-service-*.jar
+      current_app_name: {{cf-prod-app-name}}
+  - task: integration-tests
+    file: pipeline-tasks/run-maven-itests/task.yml
+    params:
+      <<: *maven-params
+      APP_URL: {{cf-prod-app-url}}
+
+- name: patch
+  public: true
+  serial_groups: [version]
+  plan:
+  - get: version
+    passed: [shipit]
+    params: {bump: patch, pre: rc}
+    trigger: true
+  - put: version
+    params: {file: version/version}
+
+- name: major
+  public: true
+  serial_groups: [version]
+  plan:
+  - get: version
+    params: {bump: major, pre: rc}
+  - put: version
+    params: {file: version/version}
+
+- name: minor
+  public: true
+  serial_groups: [version]
+  plan:
+  - get: version
+    params: {bump: minor, pre: rc}
+  - put: version
+    params: {file: version/version}
+
+resources:
+- name: pipeline-tasks
+  type: git
+  source:
+    uri: {{pipeline-tasks-git-uri}}
+    branch: {{pipeline-tasks-git-branch}}
+
+- name: task-service
+  type: git
+  source:
+    uri: {{git-project-uri}}
+    branch: {{git-project-branch}}
+    private_key: {{github-private-key}}
+
+- name: version
+  type: semver
+  source:
+    driver: git
+    initial_version: 1.0.0-rc.0
+    uri: {{git-semver-uri}}
+    branch: {{git-semver-branch}}
+    file: version
+    private_key: {{github-private-key}}
+
+- name: maven-milestone
+  type: maven-resource
+  source:
+    url: {{maven-milestone-url}}
+    artifact: com.aviato:task-service:jar
+    username: {{maven-milestone-username}}
+    password: {{maven-milestone-password}}
+    skip_cert_check: {{maven-milestone-skip-ssl}}
+
+- name: maven-release
+  type: maven-resource
+  source:
+    url: {{maven-release-url}}
+    artifact: com.aviato:task-service:jar
+    username: {{maven-release-username}}
+    password: {{maven-release-password}}
+    skip_cert_check: {{maven-release-skip-ssl}}
+
+- name: cf-dev
+  type: cf-cli-resource
+  source:
+    api: {{cf-dev-api-url}}
+    skip_cert_check: {{cf-dev-skip-ssl}}
+    username: {{cf-dev-username}}
+    password: {{cf-dev-password}}
+    org: {{cf-dev-org}}
+    space: {{cf-dev-space}}
+
+- name: cf-test
+  type: cf-cli-resource
+  source:
+    api: {{cf-test-api-url}}
+    skip_cert_check: {{cf-test-skip-ssl}}
+    username: {{cf-test-username}}
+    password: {{cf-test-password}}
+    org: {{cf-test-org}}
+    space: {{cf-test-space}}
+
+- name: cf-prod
+  type: cf-cli-resource
+  source:
+    api: {{cf-prod-api-url}}
+    skip_cert_check: {{cf-prod-skip-ssl}}
+    username: {{cf-prod-username}}
+    password: {{cf-prod-password}}
+    org: {{cf-prod-org}}
+    space: {{cf-prod-space}}
+
+resource_types:
+- name: maven-resource
+  type: docker-image
+  source:
+    repository: patrickcrocker/maven-resource
+    tag: 1.3.1
+
+- name: cf-cli-resource
+  type: docker-image
+  source:
+    repository: patrickcrocker/cf-cli-resource
+    tag: 2.0.0
