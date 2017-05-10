@@ -1,0 +1,30 @@
+CREATE TABLE `acft_mntnc` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(45) NOT NULL,
+  `tail` varchar(3) NOT NULL,
+  `type` varchar(3) NOT NULL,
+  `ata` int(11) DEFAULT NULL,
+  `workpackage_id` int(11) DEFAULT NULL,
+  `criticality` varchar(45) DEFAULT NULL,
+  `dfrl_lock_ind` char(1) DEFAULT NULL,
+  `rt_ctrl` char(1) DEFAULT NULL,
+  `forecast_date` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8 COMMENT='maintenance task tables';
+
+===== Version 2 =======
+CREATE TABLE `acft_mntnc` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(45) NOT NULL,
+  `tail` varchar(3) NOT NULL,
+  `type` varchar(3) NOT NULL,
+  `ata` int(11) DEFAULT NULL,
+  `workpackage_id` int(11) DEFAULT NULL,
+  `criticality` varchar(45) DEFAULT NULL,
+  `dfrl_lock_ind` char(1) DEFAULT NULL,
+  `rt_ctrl` char(1) DEFAULT NULL,
+  `forecast_date` datetime DEFAULT NULL,
+  `planned_station` varchar(3) DEFAULT NULL,
+  `schd_date` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=121 DEFAULT CHARSET=utf8 COMMENT='maintenance task tables'

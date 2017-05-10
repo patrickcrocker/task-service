@@ -1,0 +1,42 @@
+[INFO] Scanning for projects...
+[INFO]                                                                         
+[INFO] ------------------------------------------------------------------------
+[INFO] Building tasks-client 0.0.1-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ tasks-client ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 0 resource
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.1:compile (default-compile) @ tasks-client ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 7 source files to D:\Project Works\Microservices\tasks-client\tasks-client\target\classes
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:testResources (default-testResources) @ tasks-client ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.1:testCompile (default-testCompile) @ tasks-client ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- maven-surefire-plugin:2.18.1:test (default-test) @ tasks-client ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- maven-jar-plugin:2.6:jar (default-jar) @ tasks-client ---
+[INFO] Building jar: D:\Project Works\Microservices\tasks-client\tasks-client\target\tasks-client-0.0.1-SNAPSHOT.jar
+[INFO] 
+[INFO] --- spring-boot-maven-plugin:1.5.3.RELEASE:repackage (default) @ tasks-client ---
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 7.416 s
+[INFO] Finished at: 2017-05-09T20:26:57-05:00
+[INFO] Final Memory: 43M/341M
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:1.5.3.RELEASE:repackage (default) on project tasks-client: Execution default of goal org.springframework.boot:spring-boot-maven-plugin:1.5.3.RELEASE:repackage failed: Unable to rename 'D:\Project Works\Microservices\tasks-client\tasks-client\target\tasks-client-0.0.1-SNAPSHOT.jar' to 'D:\Project Works\Microservices\tasks-client\tasks-client\target\tasks-client-0.0.1-SNAPSHOT.jar.original' -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/PluginExecutionException
