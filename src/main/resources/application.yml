@@ -1,0 +1,32 @@
+---
+spring:
+  application:
+    name: task-service
+  jpa:
+    generate-ddl: true
+
+---
+spring:
+  profiles: local,local-mysql
+  cloud:
+    config:
+      uri: http://localhost:8888
+
+---
+spring:
+  profiles: local-mysql
+  server:
+    datasource:
+      url: jdbc:mysql://localhost:3306/amps
+      username: root
+      password: root
+
+#spring.cloud.config.uri=http://localhost:8888
+#spring.application.name=task-service
+#logging.level.org.springframework.web.servlet.DispatcherServlet=DEBUG
+#logging.level.org.springframework=DEBUG
+
+#spring.datasource.url = jdbc:mysql://localhost:3306/amps
+#spring.datasource.username = root
+#spring.datasource.password = root
+#security.basic.enabled=false
