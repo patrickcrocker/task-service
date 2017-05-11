@@ -53,6 +53,20 @@ jobs:
       version_file: version/version
   - put: version
     params: {file: version/version}
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: FAILED to build {{cf-dev-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Successfully built {{cf-dev-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
 
 - name: dev
   public: true
@@ -110,6 +124,20 @@ jobs:
     params:
       <<: *maven-params
       APP_URL: {{cf-dev-app-url}}
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: FAILED to deploy: {{cf-dev-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Successfully deployed: {{cf-dev-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
 
 - name: test
   public: true
@@ -167,6 +195,20 @@ jobs:
     params:
       <<: *maven-params
       APP_URL: {{cf-test-app-url}}
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: FAILED to deploy: {{cf-test-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Successfully deployed: {{cf-test-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
 
 - name: shipit
   public: true
@@ -244,6 +286,20 @@ jobs:
     params:
       <<: *maven-params
       APP_URL: {{cf-prod-app-url}}
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: FAILED to deploy: {{cf-prod-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Successfully deployed: {{cf-prod-app-name}}
+        <https://ci.anvil.pcfdemo.com/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
 
 - name: patch
   public: true
@@ -286,7 +342,7 @@ resources:
   source:
     uri: {{git-project-uri}}
     branch: {{git-project-branch}}
-    private_key: {{github-private-key}}
+    # private_key: {{github-private-key}}
 
 - name: version
   type: semver
@@ -346,6 +402,11 @@ resources:
     org: {{cf-prod-org}}
     space: {{cf-prod-space}}
 
+- name: slack
+  type: slack-notification
+  source:
+    url: {{slack-webhook-url}}
+
 resource_types:
 - name: maven-resource
   type: docker-image
@@ -358,3 +419,8 @@ resource_types:
   source:
     repository: patrickcrocker/cf-cli-resource
     tag: 2.0.0
+
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
