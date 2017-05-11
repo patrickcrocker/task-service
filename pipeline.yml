@@ -3,8 +3,8 @@ groups:
 - name: all
   jobs:
   - build
+  - dev
   - test
-  - uat
   - shipit
   - patch
   - prod
@@ -13,8 +13,8 @@ groups:
 - name: develop
   jobs:
   - build
+  - dev
   - test
-  - uat
 - name: publish
   jobs:
   - shipit
@@ -54,7 +54,7 @@ jobs:
   - put: version
     params: {file: version/version}
 
-- name: test
+- name: dev
   public: true
   serial_groups: [version]
   plan:
@@ -76,24 +76,27 @@ jobs:
       - command: create-org
       - command: create-space
       - command: create-service
-        service: {{cf-dev-app-db-service}}
-        plan: {{cf-dev-app-db-plan}}
-        service_instance: {{cf-dev-app-db-si}}
+        service: {{cf-dev-db-service}}
+        plan: {{cf-dev-db-plan}}
+        service_instance: {{cf-dev-db-si}}
       - command: create-service
-        service: {{cf-dev-app-rabbitmq-service}}
-        plan: {{cf-dev-app-rabbitmq-plan}}
-        service_instance: {{cf-dev-app-rabbitmq-si}}
+        service: {{cf-dev-rabbitmq-service}}
+        plan: {{cf-dev-rabbitmq-plan}}
+        service_instance: {{cf-dev-rabbitmq-si}}
       - command: create-service
-        service: {{cf-dev-app-service-registry-service}}
-        plan: {{cf-dev-app-service-registry-plan}}
-        service_instance: {{cf-dev-app-service-registry-si}}
+        service: {{cf-dev-registry-service}}
+        plan: {{cf-dev-registry-plan}}
+        service_instance: {{cf-dev-registry-si}}
+        configuration: {{cf-dev-registry-config}}
+      - command: wait-for-service
+        service_instance: {{cf-dev-registry-si}}
   - task: generate-manifest
     file: pipeline-tasks/generate-manifest/task.yml
     params:
       MF_NAME: {{cf-dev-app-name}}
       MF_HOST: {{cf-dev-app-host}}
       MF_DOMAIN: {{cf-dev-app-domain}}
-      MF_SERVICES: [{{cf-dev-app-db-si}}]
+      MF_SERVICES: [{{cf-dev-db-si}},{{cf-dev-rabbitmq-si}},{{cf-dev-registry-si}}]
       MF_BUILDPACK: https://github.com/cloudfoundry/java-buildpack.git#v4.0
   - put: cf-push
     resource: cf-dev
@@ -108,7 +111,7 @@ jobs:
       <<: *maven-params
       APP_URL: {{cf-dev-app-url}}
 
-- name: uat
+- name: test
   public: true
   serial_groups: [version]
   plan:
@@ -116,12 +119,12 @@ jobs:
     - get: pipeline-tasks
     - get: project
       resource: task-service
-      passed: [test]
+      passed: [dev]
     - get: version
-      passed: [test]
+      passed: [dev]
     - get: artifact
       resource: maven-milestone
-      passed: [test]
+      passed: [dev]
       trigger: true
   - put: cf-prepare-env
     resource: cf-test
@@ -130,24 +133,27 @@ jobs:
       - command: create-org
       - command: create-space
       - command: create-service
-        service: {{cf-test-app-db-service}}
-        plan: {{cf-test-app-db-plan}}
-        service_instance: {{cf-test-app-db-si}}
+        service: {{cf-test-db-service}}
+        plan: {{cf-test-db-plan}}
+        service_instance: {{cf-test-db-si}}
       - command: create-service
-        service: {{cf-test-app-rabbitmq-service}}
-        plan: {{cf-test-app-rabbitmq-plan}}
-        service_instance: {{cf-test-app-rabbitmq-si}}
+        service: {{cf-test-rabbitmq-service}}
+        plan: {{cf-test-rabbitmq-plan}}
+        service_instance: {{cf-test-rabbitmq-si}}
       - command: create-service
-        service: {{cf-test-app-service-registry-service}}
-        plan: {{cf-test-app-service-registry-plan}}
-        service_instance: {{cf-test-app-service-registry-si}}
+        service: {{cf-test-registry-service}}
+        plan: {{cf-test-registry-plan}}
+        service_instance: {{cf-test-registry-si}}
+        configuration: {{cf-test-registry-config}}
+      - command: wait-for-service
+        service_instance: {{cf-test-registry-si}}
   - task: generate-manifest
     file: pipeline-tasks/generate-manifest/task.yml
     params:
       MF_NAME: {{cf-test-app-name}}
       MF_HOST: {{cf-test-app-host}}
-      MF_SERVICES: [{{cf-test-app-db-si}}]
       MF_DOMAIN: {{cf-test-app-domain}}
+      MF_SERVICES: [{{cf-test-db-si}},{{cf-test-rabbitmq-si}},{{cf-test-registry-si}}]
       MF_BUILDPACK: https://github.com/cloudfoundry/java-buildpack.git#v4.0
   - put: cf-push
     resource: cf-test
@@ -169,12 +175,12 @@ jobs:
   - aggregate:
     - get: project
       resource: task-service
-      passed: [uat]
+      passed: [test]
     - get: version
-      passed: [uat]
+      passed: [test]
       params: {bump: final}
     - get: maven-milestone
-      passed: [uat]
+      passed: [test]
   - put: maven-release
     params:
       file: maven-milestone/task-service-*.jar
@@ -204,24 +210,27 @@ jobs:
       - command: create-org
       - command: create-space
       - command: create-service
-        service: {{cf-prod-app-db-service}}
-        plan: {{cf-prod-app-db-plan}}
-        service_instance: {{cf-prod-app-db-si}}
+        service: {{cf-prod-db-service}}
+        plan: {{cf-prod-db-plan}}
+        service_instance: {{cf-prod-db-si}}
       - command: create-service
-        service: {{cf-prod-app-rabbitmq-service}}
-        plan: {{cf-prod-app-rabbitmq-plan}}
-        service_instance: {{cf-prod-app-rabbitmq-si}}
+        service: {{cf-prod-rabbitmq-service}}
+        plan: {{cf-prod-rabbitmq-plan}}
+        service_instance: {{cf-prod-rabbitmq-si}}
       - command: create-service
-        service: {{cf-prod-app-service-registry-service}}
-        plan: {{cf-prod-app-service-registry-plan}}
-        service_instance: {{cf-prod-app-service-registry-si}}
+        service: {{cf-prod-registry-service}}
+        plan: {{cf-prod-registry-plan}}
+        service_instance: {{cf-prod-registry-si}}
+        configuration: {{cf-prod-registry-config}}
+      - command: wait-for-service
+        service_instance: {{cf-prod-registry-si}}
   - task: generate-manifest
     file: pipeline-tasks/generate-manifest/task.yml
     params:
       MF_NAME: {{cf-prod-app-name}}
       MF_HOST: {{cf-prod-app-host}}
       MF_DOMAIN: {{cf-prod-app-domain}}
-      MF_SERVICES: [{{cf-prod-app-db-si}}]
+      MF_SERVICES: [{{cf-prod-db-si}},{{cf-prod-rabbitmq-si}},{{cf-prod-registry-si}}]
       MF_BUILDPACK: https://github.com/cloudfoundry/java-buildpack.git#v4.0
   - put: cf-push
     resource: cf-prod
