@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.aa.amps</groupId>
-	<artifactId>tasks-service</artifactId>
+	<artifactId>task-service</artifactId>
 	<version>${revision}</version>
 	<packaging>jar</packaging>
 
-	<name>tasks-service</name>
+	<name>task-service</name>
 	<description>Demo project for Spring Boot</description>
 
 	<parent>
