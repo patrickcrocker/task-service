@@ -1,0 +1,9 @@
+---
+applications:
+- name: task-service
+  host: task-service
+  buildpack: https://github.com/cloudfoundry/java-buildpack.git#v4.0
+  services:
+  - task-service-db
+  - rabbitmq
+  - service-registry
